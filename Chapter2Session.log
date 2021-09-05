@@ -1,0 +1,142 @@
+sc.sparkUser
+sc.deployMode
+sc.getExecutorMemoryStatus
+val rdd = sc.parallelize(Array(1, 2, 2, 4), 4)
+val rawblocks=sc.textFile("linkage/data")
+val rawblocks=sc.textFile("data")
+rawblocks.first
+val head = rawblocks.take(10)
+head.foreach(println)
+def isHeader(line: String) = line.contains("id_1")
+val rawblocks=sc.textFile("data/block_1.csv")
+rawblocks.first
+val head = rawblocks.take(10)
+head.foreach(println)
+head.filter(isHeader).foreach(println)
+head.filterNot(isHeader).foreach(println)
+head.filterNot(isHeader).length
+head.filter(x => !isHeader(x) ).length
+head.filter(!isHeader(_) ).length
+val prev =spark.read.csv("data")
+prev.show
+val parsed=spark.read.option("header","true")
+val parsed=spark.read.option("header","true").
+option("nullValue","?").
+option("inferSchema","true").
+csv("data")
+parsed.printSchema
+parsed.count
+parsed.cache()
+parsed.rdd.map(_.getAs[Boolean]("is_match")).countByValue()
+parsed.rdd.take(10).foreach(println)
+parsed.rdd.take(1)
+parsed.rdd.take(1).map(_.getInt(0))
+parsed.printSchema
+parsed.groupBy("is_match").count().orderBy($"count".desc).show()
+parsed.rdd.map(_.getAs[Boolean]("is_match")).countByValue()
+parsed.rdd.take(1) 
+parsed.rdd.map(_.getInt(6))
+parsed.rdd.map(_.getInt(6)).stats
+parsed.createOrReplaceTempView("linkage")
+spark.sql("""
+SELECT is_match, COUNT(*) cnt
+FROM linkage
+GROUP BY is_match
+ORDER BY cnt DESC
+""").show()
+parsed.describe().show
+val matches = parsed.where("is_match = true")
+val matchSummary = matches.describe()
+val misses = parsed.filter($"is_match" === false)
+val missSummary = misses.describe()
+val summary =parsed.describe()
+parsed.cache()
+summary.printSchema()
+val schema =summary.schema
+val longForm=summary.flatMap( row =>{
+val metric = row.getString(0)
+(1 until row.size).map(i => {
+(metric,schema(i).name,row.getString(i).toDouble)})
+})
+val longFormDf=longForm.toDF("metric","field","value")
+longFormDf.show
+val wideDF=longFormDf.groupBy("field").pivot("metric",Seq("count","mean","stddev","min","max"))
+wideDF.toString
+val wideDF=longFormDf.groupBy("field").pivot("metric",Seq("count","mean","stddev","min","max")).agg(first("value"))
+wideDF.show
+:load pivotSummary.scala
+:load pivotSummary.scala
+val matchSummaryT = pivotSummary(matchSummary)
+val missSummaryT =pivotSummary(missSummary)
+matchSummaryT.show
+missSummaryT.show
+parsed.rdd.map(_.getInt(6)).stats
+val parsed_rdd=parsed.rdd
+parsed_rdd.take(10).foreach(println)
+parsed_rdd.map(_.getInt(0)).stats
+ wideDF.show
+parsed_rdd.count
+(0 until parsed_rdd.first.size).foreach(println)
+(0 until parsed_rdd.first.size).map( clm => {parsed_rdd.map(_.getString(clm))})
+(0 until parsed_rdd.first.size).map( clm => {parsed_rdd.map(_.getString(clm).toDouble)})
+(0 until parsed_rdd.first.size).map( clm => {parsed_rdd.map(_.get(clm)).first})
+(0 until parsed_rdd.first.size).map( clm => {parsed_rdd.map(_.get(clm))})
+(0 until parsed_rdd.first.size).map( clm => {parsed_rdd.map(_.get(clm).toString)})
+(0 until parsed_rdd.first.size).map( clm => {parsed_rdd.map(_.get(clm)).first})
+parsed_rdd
+(0 until parsed_rdd.first.size).map( clm => {parsed_rdd.filter(!_.isNullAt(clm)).map(_.get(clm)).first})
+parsed.describe().show
+(0 until parsed_rdd.first.size-1).map( clm => {parsed_rdd.filter(!_.isNullAt(clm)).map(_.get(clm).toString.toDouble).stats})
+res72.foreach(println)
+wideDF.show
+val wideStat =(0 until parsed_rdd.first.size-1).map( clm => {(clm,parsed_rdd.filter(!_.isNullAt(clm)).map(_.get(clm).toString.toDouble).stats)})
+wideStat.foreach(println)
+matchSummaryT.createOrReplaceTempView("match_desc")
+missSummaryT.createOrReplaceTempView("miss_desc")
+spark.sql("""
+SELECT a.field, a.count + b.count total, a.mean - b.mean delta
+FROM match_desc a INNER JOIN miss_desc b ON a.field = b.field
+WHERE a.field NOT IN ("id_1", "id_2")
+ORDER BY delta DESC, total DESC
+""").show()
+case class MatchData(
+id_1: Int,
+id_2: Int,
+cmp_fname_c1: Option[Double],
+cmp_fname_c2: Option[Double],
+cmp_lname_c1: Option[Double],
+cmp_lname_c2: Option[Double],
+cmp_sex: Option[Int],
+cmp_bd: Option[Int],
+cmp_bm: Option[Int],
+cmp_by: Option[Int],
+cmp_plz: Option[Int],
+is_match: Boolean
+)
+val matchData = parsed.as[MatchData]
+matchData.show()
+case class Score(value: Double) {
+def +(oi: Option[Int]) = {
+Score(value + oi.getOrElse(0))
+}
+}
+def scoreMatchData(md: MatchData): Double = {
+(Score(md.cmp_lname_c1.getOrElse(0.0)) + md.cmp_plz +
+md.cmp_by + md.cmp_bd + md.cmp_bm).value
+}
+val scored = matchData.map { md =>
+(scoreMatchData(md), md.is_match)
+}.toDF("score", "is_match")
+def crossTabs(scored: DataFrame, t: Double): DataFrame = {
+scored.
+selectExpr(s"score >= $t as above", "is_match").
+groupBy("above").
+pivot("is_match", Seq("true", "false")).
+count()
+}
+scored.show
+crossTabs(scored, 4.0).show()
+crossTabs(scored, 2.0).show()
+scored.filter("is_match = 'false'")
+scored.filter("is_match = 'false'").count
+scored.filter("is_match = 'true'").count
